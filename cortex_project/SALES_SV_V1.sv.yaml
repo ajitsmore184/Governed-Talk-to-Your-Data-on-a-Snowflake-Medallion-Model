@@ -1,0 +1,219 @@
+name: SALES_SV_V1
+tables:
+  - name: CUSTOMERS
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_CUSTOMER
+    primary_key:
+      columns:
+        - CUSTOMER_KEY
+    dimensions:
+      - name: CUSTOMER_NAME
+        expr: customers.CUSTOMER_NAME
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: CUSTOMER_NATION
+        expr: customers.NATION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: CUSTOMER_PHONE
+        expr: customers.PHONE
+        data_type: VARCHAR(15)
+        access_modifier: public_access
+      - name: CUSTOMER_REGION
+        expr: customers.REGION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: MARKET_SEGMENT
+        expr: customers.MARKET_SEGMENT
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+    metrics:
+      - name: AVG_ACCOUNT_BALANCE
+        expr: AVG(customers.ACCOUNT_BALANCE)
+        access_modifier: public_access
+      - name: CUSTOMER_COUNT
+        expr: COUNT(customers.CUSTOMER_KEY)
+        access_modifier: public_access
+  - name: INVENTORY
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_INVENTORY
+    primary_key:
+      columns:
+        - PART_KEY
+        - SUPPLIER_KEY
+    metrics:
+      - name: TOTAL_AVAILABLE_QTY
+        expr: SUM(inventory.AVAILABLE_QTY)
+        access_modifier: public_access
+      - name: TOTAL_INVENTORY_VALUE
+        expr: SUM(inventory.INVENTORY_VALUE)
+        access_modifier: public_access
+  - name: LINES
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_ORDER_LINES
+    primary_key:
+      columns:
+        - ORDER_KEY
+        - LINE_NUMBER
+    dimensions:
+      - name: IS_LATE_DELIVERY
+        expr: lines.IS_LATE_DELIVERY
+        data_type: BOOLEAN
+        access_modifier: public_access
+      - name: RETURN_FLAG
+        expr: lines.RETURN_FLAG
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+      - name: SHIP_MODE
+        expr: lines.SHIP_MODE
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+    metrics:
+      - name: AVG_LINE_QUANTITY
+        expr: AVG(lines.QUANTITY)
+        access_modifier: public_access
+      - name: LINE_COUNT
+        expr: COUNT(lines.LINE_NUMBER)
+        access_modifier: public_access
+      - name: NET_REVENUE
+        expr: SUM(lines.NET_AMOUNT)
+        access_modifier: public_access
+      - name: TOTAL_QUANTITY
+        expr: SUM(lines.QUANTITY)
+        access_modifier: public_access
+  - name: ORDERS
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_ORDERS
+    primary_key:
+      columns:
+        - ORDER_KEY
+    dimensions:
+      - name: ORDER_DATE
+        expr: orders.ORDER_DATE
+        data_type: DATE
+        access_modifier: public_access
+      - name: ORDER_MONTH
+        expr: "DATE_TRUNC('month', orders.ORDER_DATE)"
+        data_type: DATE
+        access_modifier: public_access
+      - name: ORDER_PRIORITY
+        expr: orders.ORDER_PRIORITY
+        data_type: VARCHAR(15)
+        access_modifier: public_access
+      - name: ORDER_STATUS
+        expr: orders.ORDER_STATUS
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+      - name: ORDER_YEAR
+        expr: orders.ORDER_YEAR
+        data_type: "NUMBER(4,0)"
+        access_modifier: public_access
+    metrics:
+      - name: AVG_ORDER_VALUE
+        expr: AVG(orders.TOTAL_PRICE)
+        access_modifier: public_access
+      - name: MAX_ORDER_VALUE
+        expr: MAX(orders.TOTAL_PRICE)
+        access_modifier: public_access
+      - name: ORDER_COUNT
+        expr: COUNT(orders.ORDER_KEY)
+        access_modifier: public_access
+  - name: PARTS
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_PART
+    primary_key:
+      columns:
+        - PART_KEY
+    dimensions:
+      - name: BRAND
+        expr: parts.BRAND
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+      - name: MANUFACTURER
+        expr: parts.MANUFACTURER
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: PART_NAME
+        expr: parts.PART_NAME
+        data_type: VARCHAR(55)
+        access_modifier: public_access
+      - name: PART_TYPE
+        expr: parts.PART_TYPE
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+    metrics:
+      - name: PART_COUNT
+        expr: COUNT(parts.PART_KEY)
+        access_modifier: public_access
+  - name: SUPPLIERS
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_SUPPLIER
+    primary_key:
+      columns:
+        - SUPPLIER_KEY
+    dimensions:
+      - name: SUPPLIER_NAME
+        expr: suppliers.SUPPLIER_NAME
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: SUPPLIER_NATION
+        expr: suppliers.NATION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: SUPPLIER_REGION
+        expr: suppliers.REGION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+    metrics:
+      - name: SUPPLIER_COUNT
+        expr: COUNT(suppliers.SUPPLIER_KEY)
+        access_modifier: public_access
+relationships:
+  - name: INVENTORY_TO_PARTS
+    left_table: INVENTORY
+    right_table: PARTS
+    relationship_columns:
+      - left_column: PART_KEY
+        right_column: PART_KEY
+  - name: INVENTORY_TO_SUPPLIERS
+    left_table: INVENTORY
+    right_table: SUPPLIERS
+    relationship_columns:
+      - left_column: SUPPLIER_KEY
+        right_column: SUPPLIER_KEY
+  - name: LINES_TO_ORDERS
+    left_table: LINES
+    right_table: ORDERS
+    relationship_columns:
+      - left_column: ORDER_KEY
+        right_column: ORDER_KEY
+  - name: LINES_TO_PARTS
+    left_table: LINES
+    right_table: PARTS
+    relationship_columns:
+      - left_column: PART_KEY
+        right_column: PART_KEY
+  - name: LINES_TO_SUPPLIERS
+    left_table: LINES
+    right_table: SUPPLIERS
+    relationship_columns:
+      - left_column: SUPPLIER_KEY
+        right_column: SUPPLIER_KEY
+  - name: ORDERS_TO_CUSTOMERS
+    left_table: ORDERS
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: CUSTOMER_KEY
+        right_column: CUSTOMER_KEY

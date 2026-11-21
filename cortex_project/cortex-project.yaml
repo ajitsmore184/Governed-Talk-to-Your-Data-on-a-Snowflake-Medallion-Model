@@ -1,0 +1,12 @@
+version: 1
+artifacts:
+  - path: SALES_SV_V2.sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: AI_LAB.SEMANTIC.SALES_SV_V2
+  - path: SALES_SV_V1.sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: AI_LAB.SEMANTIC.SALES_SV_V1

@@ -1,0 +1,349 @@
+name: SALES_SV_V2
+description: "Sales, inventory and delivery analytics on an ERP-style Gold star schema. Revenue always means net revenue."
+tables:
+  - name: CUSTOMERS
+    synonyms:
+      - clients
+      - buyers
+    description: Customer master data with nation and region.
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_CUSTOMER
+    primary_key:
+      columns:
+        - CUSTOMER_KEY
+    dimensions:
+      - name: CUSTOMER_NAME
+        synonyms:
+          - customer
+          - client name
+        description: "Customer name, e.g. Customer#000000001."
+        expr: customers.CUSTOMER_NAME
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: CUSTOMER_NATION
+        synonyms:
+          - customer country
+          - country
+        description: "Nation of the customer, in Title Case."
+        expr: customers.NATION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: CUSTOMER_REGION
+        synonyms:
+          - region
+          - sales region
+          - customer geography
+        description: "Region of the customer. Values: Africa, America, Asia, Europe, Middle East."
+        expr: customers.REGION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: MARKET_SEGMENT
+        synonyms:
+          - segment
+          - industry
+          - customer segment
+        description: "Customer segment. Values: AUTOMOBILE, BUILDING, FURNITURE, HOUSEHOLD, MACHINERY (uppercase)."
+        expr: customers.MARKET_SEGMENT
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+    metrics:
+      - name: AVG_ACCOUNT_BALANCE
+        synonyms:
+          - average balance
+        expr: AVG(customers.ACCOUNT_BALANCE)
+        access_modifier: public_access
+      - name: CUSTOMER_COUNT
+        synonyms:
+          - number of customers
+        expr: COUNT(customers.CUSTOMER_KEY)
+        access_modifier: public_access
+  - name: INVENTORY
+    synonyms:
+      - stock
+      - stock levels
+      - supply
+    description: Available quantity and supply cost per part and supplier.
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_INVENTORY
+    primary_key:
+      columns:
+        - PART_KEY
+        - SUPPLIER_KEY
+    metrics:
+      - name: TOTAL_AVAILABLE_QTY
+        synonyms:
+          - stock quantity
+          - units in stock
+          - available inventory
+        expr: SUM(inventory.AVAILABLE_QTY)
+        access_modifier: public_access
+      - name: TOTAL_INVENTORY_VALUE
+        synonyms:
+          - stock value
+          - inventory worth
+        description: Available quantity x supply cost.
+        expr: SUM(inventory.INVENTORY_VALUE)
+        access_modifier: public_access
+  - name: LINES
+    synonyms:
+      - line items
+      - order lines
+      - shipments
+    description: "One row per order line. Use for revenue, quantity and delivery analysis."
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_ORDER_LINES
+    primary_key:
+      columns:
+        - ORDER_KEY
+        - LINE_NUMBER
+    dimensions:
+      - name: IS_LATE_DELIVERY
+        synonyms:
+          - late
+          - delayed
+          - late shipment
+        description: TRUE when the line item was received after its commit date.
+        expr: lines.IS_LATE_DELIVERY
+        data_type: BOOLEAN
+        access_modifier: public_access
+      - name: RETURN_FLAG
+        synonyms:
+          - returned
+          - return status
+        description: "R = returned by customer, A = accepted after inspection, N = not returned. \"Returned items\" means R."
+        expr: lines.RETURN_FLAG
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+      - name: SHIP_MODE
+        synonyms:
+          - shipping method
+          - transport mode
+        description: "Values: AIR, FOB, MAIL, RAIL, REG AIR, SHIP, TRUCK."
+        expr: lines.SHIP_MODE
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+    metrics:
+      - name: AVG_LINE_QUANTITY
+        synonyms:
+          - average quantity per line
+        expr: AVG(lines.QUANTITY)
+        access_modifier: public_access
+      - name: LINE_COUNT
+        synonyms:
+          - number of line items
+        expr: COUNT(lines.LINE_NUMBER)
+        access_modifier: public_access
+      - name: NET_REVENUE
+        synonyms:
+          - revenue
+          - sales
+          - net sales
+          - turnover
+        description: "Revenue after discount: extended price x (1 - discount), summed over line items. Default measure for \"revenue\" or \"sales\"."
+        expr: SUM(lines.NET_AMOUNT)
+        access_modifier: public_access
+      - name: TOTAL_QUANTITY
+        synonyms:
+          - units sold
+          - quantity sold
+        expr: SUM(lines.QUANTITY)
+        access_modifier: public_access
+  - name: ORDERS
+    synonyms:
+      - sales orders
+      - purchase orders
+    description: One row per customer order. Use for order counts and order value.
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: FCT_ORDERS
+    primary_key:
+      columns:
+        - ORDER_KEY
+    dimensions:
+      - name: ORDER_DATE
+        description: Date the order was placed (1992-1998).
+        expr: orders.ORDER_DATE
+        data_type: DATE
+        access_modifier: public_access
+      - name: ORDER_MONTH
+        synonyms:
+          - month
+        expr: "DATE_TRUNC('month', orders.ORDER_DATE)"
+        data_type: DATE
+        access_modifier: public_access
+      - name: ORDER_PRIORITY
+        synonyms:
+          - priority
+          - urgency
+        description: "Values: 1-URGENT, 2-HIGH, 3-MEDIUM, 4-NOT SPECIFIED, 5-LOW. \"Urgent\" means 1-URGENT."
+        expr: orders.ORDER_PRIORITY
+        data_type: VARCHAR(15)
+        access_modifier: public_access
+      - name: ORDER_STATUS
+        synonyms:
+          - status
+          - fulfilment status
+        description: "Order status code. F = fulfilled (completed), O = open (still outstanding), P = partially fulfilled."
+        expr: orders.ORDER_STATUS
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+      - name: ORDER_YEAR
+        synonyms:
+          - year
+          - calendar year
+        expr: orders.ORDER_YEAR
+        data_type: "NUMBER(4,0)"
+        access_modifier: public_access
+    metrics:
+      - name: AVG_ORDER_VALUE
+        synonyms:
+          - average order size
+          - AOV
+        description: Average order total price.
+        expr: AVG(orders.TOTAL_PRICE)
+        access_modifier: public_access
+      - name: MAX_ORDER_VALUE
+        synonyms:
+          - largest order
+          - biggest order
+        description: Largest single order total price.
+        expr: MAX(orders.TOTAL_PRICE)
+        access_modifier: public_access
+      - name: ORDER_COUNT
+        synonyms:
+          - number of orders
+          - total orders
+        description: Count of orders.
+        expr: COUNT(orders.ORDER_KEY)
+        access_modifier: public_access
+  - name: PARTS
+    synonyms:
+      - products
+      - items
+      - materials
+    description: Part / product master data.
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_PART
+    primary_key:
+      columns:
+        - PART_KEY
+    dimensions:
+      - name: BRAND
+        synonyms:
+          - product brand
+        description: "Part brand, format Brand#NN, e.g. Brand#23."
+        expr: parts.BRAND
+        data_type: VARCHAR(10)
+        access_modifier: public_access
+      - name: MANUFACTURER
+        synonyms:
+          - maker
+          - mfgr
+        description: "Manufacturer, format Manufacturer#N."
+        expr: parts.MANUFACTURER
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: PART_NAME
+        description: Descriptive part name.
+        expr: parts.PART_NAME
+        data_type: VARCHAR(55)
+        access_modifier: public_access
+      - name: PART_TYPE
+        synonyms:
+          - type
+          - material type
+        description: "Part type text, e.g. STANDARD POLISHED BRASS. Use LIKE for material words such as BRASS, COPPER, STEEL, TIN, NICKEL."
+        expr: parts.PART_TYPE
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+    metrics:
+      - name: PART_COUNT
+        synonyms:
+          - number of parts
+          - number of products
+        expr: COUNT(parts.PART_KEY)
+        access_modifier: public_access
+  - name: SUPPLIERS
+    synonyms:
+      - vendors
+    description: Supplier master data with nation and region.
+    base_table:
+      database: AI_LAB
+      schema: GOLD
+      table: DIM_SUPPLIER
+    primary_key:
+      columns:
+        - SUPPLIER_KEY
+    dimensions:
+      - name: SUPPLIER_NAME
+        synonyms:
+          - vendor name
+        expr: suppliers.SUPPLIER_NAME
+        data_type: VARCHAR(25)
+        access_modifier: public_access
+      - name: SUPPLIER_NATION
+        synonyms:
+          - supplier country
+        expr: suppliers.NATION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+      - name: SUPPLIER_REGION
+        synonyms:
+          - supplier geography
+          - vendor region
+        description: "Region of the supplier. Values: Africa, America, Asia, Europe, Middle East."
+        expr: suppliers.REGION_NAME
+        data_type: VARCHAR(75)
+        access_modifier: public_access
+    metrics:
+      - name: SUPPLIER_COUNT
+        synonyms:
+          - number of suppliers
+        expr: COUNT(suppliers.SUPPLIER_KEY)
+        access_modifier: public_access
+relationships:
+  - name: INVENTORY_TO_PARTS
+    left_table: INVENTORY
+    right_table: PARTS
+    relationship_columns:
+      - left_column: PART_KEY
+        right_column: PART_KEY
+  - name: INVENTORY_TO_SUPPLIERS
+    left_table: INVENTORY
+    right_table: SUPPLIERS
+    relationship_columns:
+      - left_column: SUPPLIER_KEY
+        right_column: SUPPLIER_KEY
+  - name: LINES_TO_ORDERS
+    left_table: LINES
+    right_table: ORDERS
+    relationship_columns:
+      - left_column: ORDER_KEY
+        right_column: ORDER_KEY
+  - name: LINES_TO_PARTS
+    left_table: LINES
+    right_table: PARTS
+    relationship_columns:
+      - left_column: PART_KEY
+        right_column: PART_KEY
+  - name: LINES_TO_SUPPLIERS
+    left_table: LINES
+    right_table: SUPPLIERS
+    relationship_columns:
+      - left_column: SUPPLIER_KEY
+        right_column: SUPPLIER_KEY
+  - name: ORDERS_TO_CUSTOMERS
+    left_table: ORDERS
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: CUSTOMER_KEY
+        right_column: CUSTOMER_KEY
